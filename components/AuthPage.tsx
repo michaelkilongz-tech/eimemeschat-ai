@@ -1,7 +1,7 @@
 'use client';
-
+import { auth } from '../lib/firebase'
 import { useState } from 'react';
-import { auth } from '@/lib/firebase';
+//* import { auth } from '@/lib/firebase';
 import { 
   GoogleAuthProvider, 
   signInWithPopup, 
