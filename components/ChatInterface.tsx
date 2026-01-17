@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Send, Paperclip, Brain, User, Bot, Sparkles } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import LoadingSpinner from './LoadingSpinner';
+import { auth } from '@/lib/firebase';
 
 interface Message {
   id: string;
@@ -16,7 +17,7 @@ export default function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      content: 'Hello! I\'m EimemesChat AI, your DeepSeek-inspired assistant. How can I help you today?',
+      content: 'Hello! I\'m EimemesChat AI, your DeepSeek-inspired assistant powered by Groq. How can I help you today?',
       role: 'assistant',
       timestamp: new Date(Date.now() - 3600000),
     },
@@ -46,17 +47,79 @@ export default function ChatInterface() {
     setInput('');
     setIsLoading(true);
 
-    // Simulate API call (we'll replace with real API later)
-    setTimeout(() => {
+    try {
+      // Get Firebase token for authentication
+      const user = auth.currentUser;
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      const token = await user.getIdToken();
+
+      // Prepare messages for API
+      const apiMessages = [
+        ...messages.map(msg => ({
+          role: msg.role,
+          content: msg.content,
+        })),
+        { role: 'user', content: input }
+      ];
+
+      // Call our API endpoint
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          messages: apiMessages,
+          model: 'mixtral-8x7b-32768',
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'API request failed');
+      }
+
+      const data = await response.json();
+
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: `This is a simulated response to: "${input}". In the final app, this will connect to Groq API for real AI responses.`,
+        content: data.message,
         role: 'assistant',
         timestamp: new Date(),
       };
+
       setMessages(prev => [...prev, assistantMessage]);
+      toast.success('AI responded successfully!');
+      
+    } catch (error: any) {
+      console.error('Error sending message:', error);
+      
+      // Check if it's an auth error
+      if (error.message.includes('authenticated') || error.message.includes('401')) {
+        toast.error('Session expired. Please refresh the page.');
+      } else if (error.message.includes('API key')) {
+        toast.error('API configuration error. Please contact support.');
+      } else if (error.message.includes('Rate limit')) {
+        toast.error('Rate limit exceeded. Please try again in a moment.');
+      } else {
+        toast.error('Failed to get response. Please try again.');
+      }
+      
+      // Fallback to simulated response for demo
+      const fallbackMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: `I apologize, but I'm experiencing technical difficulties. This is a fallback response. In production, this would be a real AI response.\n\nYour query was: "${input}"\n\nError: ${error.message}`,
+        role: 'assistant',
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, fallbackMessage]);
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   const handleFileUpload = () => {
@@ -80,6 +143,16 @@ export default function ChatInterface() {
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const clearChat = () => {
+    setMessages([{
+      id: '1',
+      content: 'Hello! I\'m EimemesChat AI, your DeepSeek-inspired assistant powered by Groq. How can I help you today?',
+      role: 'assistant',
+      timestamp: new Date(),
+    }]);
+    toast.success('Chat cleared');
   };
 
   return (
@@ -123,7 +196,10 @@ export default function ChatInterface() {
               </button>
             </div>
 
-            <button className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors">
+            <button 
+              onClick={clearChat}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
+            >
               <Sparkles className="w-4 h-4" />
               <span className="text-sm font-medium">Clear Chat</span>
             </button>
@@ -204,8 +280,16 @@ export default function ChatInterface() {
                 <div className="bg-gray-100 dark:bg-gray-700 rounded-2xl rounded-tl-none p-4">
                   <div className="flex items-center gap-2">
                     <LoadingSpinner size="small" />
-                    <span className="text-gray-600 dark:text-gray-400">Thinking...</span>
+                    <span className="text-gray-600 dark:text-gray-400">
+                      {messages[messages.length - 1]?.role === 'user' 
+                        ? 'Processing your request...' 
+                        : 'Thinking...'
+                      }
+                    </span>
                   </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                    Powered by Groq Mixtral 8x7B
+                  </p>
                 </div>
               </div>
             )}
@@ -273,9 +357,12 @@ export default function ChatInterface() {
               EimemesChat AI can make mistakes. Consider checking important information.
               {webSearch && ' • Web search is enabled'}
             </p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+              Press Enter to send • Shift+Enter for new line
+            </p>
           </div>
         </div>
       </div>
     </div>
   );
-        }
+             }
