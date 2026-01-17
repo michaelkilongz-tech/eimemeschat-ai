@@ -4,8 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Send, Paperclip, Brain, User, Bot, Sparkles } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import LoadingSpinner from './LoadingSpinner';
-import { auth } from '@/lib/firebase';
-
+import { auth } from '../lib/firebase'
 interface Message {
   id: string;
   content: string;
