@@ -1,13 +1,12 @@
 'use client'
 
 import { useAuthState } from 'react-firebase-hooks/auth'
-import { auth } from '@/lib/firebase'
-import ChatInterface from '@/components/ChatInterface'
-import AuthPage from '@/components/AuthPage'
-import LoadingSpinner from '@/components/LoadingSpinner'
-import Sidebar from '@/components/Sidebar'
-import Header from '@/components/Header'
-
+import { auth } from '../lib/firebase'
+import ChatInterface from '../components/ChatInterface'
+import AuthPage from '../components/AuthPage'
+import LoadingSpinner from '../components/LoadingSpinner'
+import Sidebar from '../components/Sidebar'
+import Header from '../components/Header'
 export default function Home() {
   const [user, loading] = useAuthState(auth)
 
