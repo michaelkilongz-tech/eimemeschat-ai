@@ -1,6 +1,6 @@
 'use client';
 
-import { auth } from '@/lib/firebase';
+import { auth } from '../lib/firebase'
 import { signOut } from 'firebase/auth';
 import { User, LogOut, Sun, Moon, MessageSquare } from 'lucide-react';
 import { useState, useEffect } from 'react';
